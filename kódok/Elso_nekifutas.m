@@ -259,7 +259,7 @@ function [newnodepos, newelementnodeids] = createNewMeshOneNode(highdiffelements
     newnodeconnections = createNewNodeConnections(newnodeids);
     % Creating complete new connectivity matrix
     newelementnodeids = elementnodeids;
-    newelementnodeids(highdiffelements, :) = [];
+    newelementnodeids(highdiffelements(1, :), :) = [];
     newelementnodeids = [newelementnodeids; newnodeconnections];
     % Appending new node positions to old ones
     newnodepos = [nodepos; newnodes];
