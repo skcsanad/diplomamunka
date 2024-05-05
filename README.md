@@ -1,1 +1,1 @@
-Project files of my thesis# diplomamunka
+Project files of my thesis
