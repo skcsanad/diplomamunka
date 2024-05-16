@@ -2,7 +2,7 @@ classdef meshRefiner
     % class containing functions for doing the actual mesh refinement
 
     methods
-        function elementvalues = getElementValues(elementnodeids, values) % Function for mapping node values to elements
+        function elementvalues = getElementValues(obj, elementnodeids, values) % Function for mapping node values to elements
             elementvalues = zeros(size(elementnodeids, 1), size(elementnodeids, 2), size(values, 1));
             for i = 1:size(elementnodeids, 1)
                 columnids = elementnodeids(i, :);
@@ -13,7 +13,7 @@ classdef meshRefiner
 
 
         % Function for calculating de diffs in the elements
-        function elementdiffs = calcElementDiffs(elementvalues)
+        function elementdiffs = calcElementDiffs(obj, elementvalues)
             elementdiffs = (max(elementvalues, [], 2) - min(elementvalues, [], 2)) ./ abs(mean(elementvalues, 2));%table2array(rowfun(@(x) max(x) - min(x), table(elementvalues)));
             elementdiffs = reshape(elementdiffs, size(elementdiffs, 1), size(elementdiffs, 3));
             elementdiffs(isnan(elementdiffs)) = 0;
@@ -23,7 +23,7 @@ classdef meshRefiner
         % Function for calculating the fillstatus in the elements possible node
         % values of 3 and 4 are ignored because they are not present in the data
         % and will likely not be used anyways
-        function elementfillstatus = calcElementFillstatus(elementvalues)
+        function elementfillstatus = calcElementFillstatus(obj, elementvalues)
             elementfillstatus = zeros(size(elementvalues, 1), size(elementvalues, 3));
             for i = 1:size(elementvalues, 1)
                 for j = 1:size(elementvalues, 3)
@@ -39,7 +39,7 @@ classdef meshRefiner
         
         % Function for separating the indices of filled and empty elements for
         % every timestep
-        function [filledelements, emptyelements] = getFilledElements(elementfillstatus)
+        function [filledelements, emptyelements] = getFilledElements(obj, elementfillstatus)
             filledelements = cell(1, size(elementfillstatus, 2));
             emptyelements = cell(1, size(elementfillstatus, 2));
             
@@ -55,8 +55,8 @@ classdef meshRefiner
         % Function for retrieving elements with high diff values, the normal
         % elements and a cell containing the highdiff elements by timestep - this
         % might be removed if there is no need for use
-        function [highdiffelements, normalelements, highdiffsbytimestep] = calcHighDiffElements(elementfillstatus, results, thresholdfactor)
-            [filledelements, emptyelements] = getFilledElements(elementfillstatus);
+        function [highdiffelements, normalelements, highdiffsbytimestep] = calcHighDiffElements(obj, elementfillstatus, results, thresholdfactor)
+            [filledelements, emptyelements] = obj.getFilledElements(elementfillstatus);
         
             highdiffelements = [];
             highdiffsbytimestep = cell(1, size(results, 2));
@@ -76,7 +76,7 @@ classdef meshRefiner
         
         % Function for refining the mesh in selected elements by placing multiple
         % nodes
-        function [newnodepos, newelementnodeids, affectedelements] = createNewMeshMultiNode(nodepos, elementnodeids, highdiffelements)
+        function [newnodepos, newelementnodeids, affectedelements] = createNewMeshMultiNode(obj, nodepos, elementnodeids, highdiffelements)
             % Create matrix mapping edges to elements
             edges = nchoosek(1:size(elementnodeids, 2), 2);
             edges = transpose(edges);
@@ -143,7 +143,7 @@ classdef meshRefiner
         
         % Function for calculating the positions of new nodes in each
         % highdiffelement
-        function [newnodes, newnodeids] = calcNewNodePos(highdiffelements, values, elementnodeids, nodepos)
+        function [newnodes, newnodeids] = calcNewNodePos(obj, highdiffelements, values, elementnodeids, nodepos)
             newnodes = [];
             newnodeids = [];
             nodeid = max(elementnodeids, [], "all");
@@ -169,7 +169,7 @@ classdef meshRefiner
         
         
         % Function for creating the new node connections
-        function newnodeconnections = createNewNodeConnections(newnodeids)
+        function newnodeconnections = createNewNodeConnections(obj, newnodeids)
             newnodeconnections = [];
             for i=1:size(newnodeids, 1)
                 selections = nchoosek(1:length(newnodeids(i, 1:end-1)), size(newnodeids, 2)-2);
@@ -182,9 +182,9 @@ classdef meshRefiner
         
         % Function for creating the entire new mesh with node positions and
         % connectivity
-        function [newnodepos, newelementnodeids] = createNewMeshOneNode(highdiffelements, values, elementnodeids, nodepos)
-            [newnodes, newnodeids] = calcNewNodePos(highdiffelements, values, elementnodeids, nodepos);
-            newnodeconnections = createNewNodeConnections(newnodeids);
+        function [newnodepos, newelementnodeids] = createNewMeshOneNode(obj, highdiffelements, values, elementnodeids, nodepos)
+            [newnodes, newnodeids] = obj.calcNewNodePos(highdiffelements, values, elementnodeids, nodepos);
+            newnodeconnections = obj.createNewNodeConnections(newnodeids);
             % Creating complete new connectivity matrix
             newelementnodeids = elementnodeids;
             newelementnodeids(highdiffelements(1, :), :) = [];

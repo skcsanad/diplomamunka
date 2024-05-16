@@ -5,7 +5,7 @@ classdef udmWriter
         % Function for creating the .udm file from the 
         % Function for creating the .udm file from the node positions and
         % connectivity matrix
-        function createUDM(newnodepos, newelementnodeids, filename)
+        function createUDM(obj, newnodepos, newelementnodeids, filename)
             % This block of code generates the txt for the .udm file used for importing
             % the mesh into moldflow.
             

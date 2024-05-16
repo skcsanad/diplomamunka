@@ -4,7 +4,23 @@ classdef easyVisualizer
     methods
     % Below here are functions for handy data visualization
     % Function for plotting results
-        function plotElementData(elementcoordinates, results, timestep, colorlimit)
+
+            % Function for separating the indices of filled and empty elements for
+        % every timestep
+        function [filledelements, emptyelements] = getFilledElements(obj, elementfillstatus)
+            filledelements = cell(1, size(elementfillstatus, 2));
+            emptyelements = cell(1, size(elementfillstatus, 2));
+            
+            for i = 1:size(elementfillstatus, 2)
+                filledindices = find(elementfillstatus(:, i) >= 1);
+                emptyindices = find(elementfillstatus(:, i) < 1);
+                filledelements{i} = filledindices;
+                emptyelements{i} = emptyindices;
+            end
+        end
+
+
+        function plotElementData(obj, elementcoordinates, results, timestep, colorlimit)
             x = elementcoordinates(:, 1);
             y = elementcoordinates(:, 2);
             z = elementcoordinates(:, 3);
@@ -21,8 +37,8 @@ classdef easyVisualizer
         % Function for plotting the filling method while also displaying the 
         % element values for a feature in the filled region. The flowfront is
         % considered as empty so element values in the flowfront are ignored
-        function plotFillElementData(elementcoordinates, elementfillstatus, results, timestep, colorlimit)
-            [filledelements, emptyelements] = getFilledElements(elementfillstatus);
+        function plotFillElementData(obj, elementcoordinates, elementfillstatus, results, timestep, colorlimit)
+            [filledelements, emptyelements] = obj.getFilledElements(elementfillstatus);
         
             x = elementcoordinates(:, 1);
             y = elementcoordinates(:, 2);
