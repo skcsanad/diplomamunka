@@ -99,9 +99,12 @@ classdef meshRefiner
             refine_Y = Y(edgestorefine);
             refine_Z = Z(edgestorefine);
             % Calculate the coordinates of the new nodes
-            new_X = mean(refine_X, 2);
-            new_Y = mean(refine_Y, 2);
-            new_Z = mean(refine_Z, 2);
+            a = 1:length(refine_X);
+            a = transpose(a / length(a));
+            a = a(randperm(length(a)));
+            new_X = mean(refine_X, 2) + 0.1*a.*(refine_X(:, 1) - refine_X(:, 2));
+            new_Y = mean(refine_Y, 2) + 0.1*a.*(refine_Y(:, 1) - refine_Y(:, 2));
+            new_Z = mean(refine_Z, 2) + 0.1*a.*(refine_Z(:, 1) - refine_Z(:, 2));
             newnodes = [new_X, new_Y, new_Z];
             newnodeids = transpose(size(nodepos, 1)+1:size(nodepos, 1)+size(newnodes, 1));
             % Affected elements -> their edges (sorted) -> newly created nodes ->
@@ -143,7 +146,7 @@ classdef meshRefiner
         
         % Function for calculating the positions of new nodes in each
         % highdiffelement
-        function [newnodes, newnodeids] = calcNewNodePos(obj, highdiffelements, values, elementnodeids, nodepos)
+        function [newnodes, newnodeids] = calcNewNodePos(obj, highdiffelements, values, elementnodeids, nodepos, movecentroid)
             newnodes = [];
             newnodeids = [];
             nodeid = max(elementnodeids, [], "all");
@@ -161,7 +164,11 @@ classdef meshRefiner
                 centroid = [mean(elementnodecoords(:, 1)), mean(elementnodecoords(:, 2)), mean(elementnodecoords(:, 3))];
                 vectors = edgecenters - centroid;
                 sumvector = 0.8 * (sum(vectors .* relativeedgediffs, 1));
-                newnodepos = centroid + sumvector;
+                if movecentroid == true
+                    newnodepos = centroid + sumvector;
+                else
+                    newnodepos = cenroid;
+                end
                 newnodes = [newnodes; newnodepos];
                 newnodeids = [newnodeids;[elementnodes, nodeid]];
             end
@@ -182,12 +189,12 @@ classdef meshRefiner
         
         % Function for creating the entire new mesh with node positions and
         % connectivity
-        function [newnodepos, newelementnodeids] = createNewMeshOneNode(obj, highdiffelements, values, elementnodeids, nodepos)
-            [newnodes, newnodeids] = obj.calcNewNodePos(highdiffelements, values, elementnodeids, nodepos);
+        function [newnodepos, newelementnodeids] = createNewMeshOneNode(obj, highdiffelements, values, elementnodeids, nodepos, movecentroid)
+            [newnodes, newnodeids] = obj.calcNewNodePos(highdiffelements, values, elementnodeids, nodepos, movecentroid);
             newnodeconnections = obj.createNewNodeConnections(newnodeids);
             % Creating complete new connectivity matrix
             newelementnodeids = elementnodeids;
-            newelementnodeids(highdiffelements(1, :), :) = [];
+            newelementnodeids(highdiffelements(:, 1), :) = [];
             newelementnodeids = [newelementnodeids; newnodeconnections];
             % Appending new node positions to old ones
             newnodepos = [nodepos; newnodes];

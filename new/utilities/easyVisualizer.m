@@ -19,13 +19,26 @@ classdef easyVisualizer
             end
         end
 
+        % Function for calculating the postions of the elements (their
+        % centroids)
+        function [elementcoordinates] = getElementCoordinates(obj, elementnodeids, nodepos)
+            elementcoordinates = zeros(size(elementnodeids, 1), 3);
+            for i = 1:size(elementnodeids, 1)
+                columnids = elementnodeids(i, :);
+                x = mean(nodepos(columnids, 1));
+                y = mean(nodepos(columnids, 2));
+                z = mean(nodepos(columnids, 3));
+                elementcoordinates(i, :) = [x, y, z];
+            end
+        end
 
         function plotElementData(obj, elementcoordinates, results, timestep, colorlimit)
             x = elementcoordinates(:, 1);
             y = elementcoordinates(:, 2);
             z = elementcoordinates(:, 3);
         
-            scatter3(x, y, z, 20, results(:, timestep), "filled")
+            scatter3(x, y, z, 20, results(:, timestep), "filled", 'd')
+            colormap('jet')
             axis equal
             if strcmp(colorlimit, 'yes')
                 clim([min(results(:)), max(results(:))])
@@ -44,13 +57,55 @@ classdef easyVisualizer
             y = elementcoordinates(:, 2);
             z = elementcoordinates(:, 3);
         
-            scatter3(x(filledelements{timestep}), y(filledelements{timestep}), z(filledelements{timestep}), 20, results(filledelements{timestep}, timestep), "filled", 'MarkerEdgeColor', 'none')
+            scatter3(x(filledelements{timestep}), y(filledelements{timestep}), z(filledelements{timestep}), 20, results(filledelements{timestep}, timestep), "filled", 'd', 'MarkerEdgeColor', 'none')
+            colormap('jet')
             if strcmp(colorlimit, 'yes')
                 clim([min(results(:)), max(results(:))])
             end
             colorbar
             hold on
-            scatter3(x(emptyelements{timestep}), y(emptyelements{timestep}), z(emptyelements{timestep}), 20, 'filled', 'w', 'MarkerFaceAlpha', 0.2,'MarkerEdgeAlpha', 0.2)
+            scatter3(x(emptyelements{timestep}), y(emptyelements{timestep}), z(emptyelements{timestep}), 20, 'filled', 'd', 'w', 'MarkerFaceAlpha', 0.01,'MarkerEdgeAlpha', 0.01)
+            axis equal
+            hold off
+        end
+
+        % Function for plotting elements to refine and elements that remain
+        % unchanged side by side
+        function plotElementsToRefine(obj, elementcoordinates, highdiffelements, normalelements, affectedelements)
+            x = elementcoordinates(:, 1);
+            y = elementcoordinates(:, 2);
+            z = elementcoordinates(:, 3);
+
+            scatter3(x(highdiffelements(:, 1)), y(highdiffelements(:, 1)), z(highdiffelements(:, 1)), 100, "filled", "d", "red")
+            hold on
+
+            if affectedelements ~= 0
+                affectedelements_disp = affectedelements(find(~ismember(affectedelements, highdiffelements(:, 1))));
+                unchangedelements_disp = normalelements(find(~ismember(normalelements, affectedelements)));
+                scatter3(x(affectedelements_disp), y(affectedelements_disp), z(affectedelements_disp), 100, 'filled', 'd', 'green', 'MarkerFaceAlpha', 0.5,'MarkerEdgeAlpha', 0.8)
+            else
+                unchangedelements_disp = normalelements;
+            end
+            scatter3(x(unchangedelements_disp), y(unchangedelements_disp), z(unchangedelements_disp), 100,  "filled", "d","y", 'MarkerFaceAlpha', 0.1,'MarkerEdgeAlpha', 0.2)
+            axis equal
+            hold off
+        end
+
+        % Function for plotting new elements and old elements (that
+        % remained unchanged) side by side
+        function plotNewElements(obj, elementnodeids, newelementnodeids, affectedelements, newelementcoordinates)
+            unchangedelements = elementnodeids;
+            unchangedelements(affectedelements, :) = [];
+            oldelements = find(ismember(newelementnodeids, unchangedelements, 'rows'));
+            newelements = find(~ismember(newelementnodeids, unchangedelements, 'rows'));
+    
+            x = newelementcoordinates(:, 1);
+            y = newelementcoordinates(:, 2);
+            z = newelementcoordinates(:, 3);
+
+            scatter3(x(oldelements), y(oldelements), z(oldelements), 100,  "filled", "d","y", 'MarkerFaceAlpha', 0.1,'MarkerEdgeAlpha', 0.2)
+            hold on
+            scatter3(x(newelements), y(newelements), z(newelements), 100, 'filled', 'd', 'green')
             axis equal
             hold off
         end
