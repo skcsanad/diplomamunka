@@ -13,8 +13,19 @@ classdef meshRefiner
 
 
         % Function for calculating de diffs in the elements
-        function elementdiffs = calcElementDiffs(obj, elementvalues)
-            elementdiffs = (max(elementvalues, [], 2) - min(elementvalues, [], 2)) ./ abs(mean(elementvalues, 2));%table2array(rowfun(@(x) max(x) - min(x), table(elementvalues)));
+        function elementdiffs = calcElementDiffs(obj, elementvalues, mode)
+            % Default mode: range
+            if nargin < 3
+                mode = 'range';
+            end
+            % Different diffmetrics
+            if strcmp(mode, 'range')
+                elementdiffs = (max(elementvalues, [], 2) - min(elementvalues, [], 2)); %table2array(rowfun(@(x) max(x) - min(x), table(elementvalues)));
+            elseif strcmp(mode, 'normrange')
+                elementdiffs = (max(elementvalues, [], 2) - min(elementvalues, [], 2)) ./ abs(mean(elementvalues, 2));
+            elseif strcmp(mode, 'max/min')
+                elementdiffs = (max(elementvalues, [], 2) / min(elementvalues, [], 2));
+            end
             elementdiffs = reshape(elementdiffs, size(elementdiffs, 1), size(elementdiffs, 3));
             elementdiffs(isnan(elementdiffs)) = 0;
         end
@@ -39,14 +50,19 @@ classdef meshRefiner
         
         % Function for separating the indices of filled and empty elements for
         % every timestep
-        function [filledelements, emptyelements] = getFilledElements(obj, elementfillstatus)
+        function [filledelements, newfilledelements, emptyelements] = getFilledElements(obj, elementfillstatus)
             filledelements = cell(1, size(elementfillstatus, 2));
             emptyelements = cell(1, size(elementfillstatus, 2));
+            allfilledelements = [];
+            newfilledelements = cell(1, size(elementfillstatus, 2));
             
             for i = 1:size(elementfillstatus, 2)
                 filledindices = find(elementfillstatus(:, i) >= 1);
+                newfilledindices = filledindices(~ismember(filledindices, allfilledelements));
+                allfilledelements = [allfilledelements; filledindices];
                 emptyindices = find(elementfillstatus(:, i) < 1);
                 filledelements{i} = filledindices;
+                newfilledelements{i} = newfilledindices;
                 emptyelements{i} = emptyindices;
             end
         end
@@ -55,15 +71,33 @@ classdef meshRefiner
         % Function for retrieving elements with high diff values, the normal
         % elements and a cell containing the highdiff elements by timestep - this
         % might be removed if there is no need for use
-        function [highdiffelements, normalelements, highdiffsbytimestep] = calcHighDiffElements(obj, elementfillstatus, results, thresholdfactor)
-            [filledelements, emptyelements] = obj.getFilledElements(elementfillstatus);
-        
+        function [highdiffelements, normalelements, highdiffsbytimestep] = calcHighDiffElements(obj, elementfillstatus, results, thresholdfactor, followflowfront)
+            [filledelements, newfilledelements, emptyelements] = obj.getFilledElements(elementfillstatus);
+            % Default mode: not follow the flowfront
+            if nargin < 5
+                followflowfront = false;
+            end
+
             highdiffelements = [];
             highdiffsbytimestep = cell(1, size(results, 2));
-        
+
             for i = 1:size(results,2)
-                threshold = thresholdfactor * mean(nonzeros(results(filledelements{i}, i)));
-                highdiffs = find(results(filledelements{i}, i) > threshold);
+                if followflowfront == true
+                    % Treat newly filled elements differently from the rest of
+                    % the elements (separate threshold value)
+                    oldelements = filledelements{i}(~ismember(filledelements{i}, newfilledelements{i}));
+                    threshold = thresholdfactor * mean(nonzeros(results(oldelements, i)));
+                    highdiffs = oldelements(results(oldelements, i) > threshold);
+                    flowfront_threshold = thresholdfactor * mean(nonzeros(results(newfilledelements{i}, i)));
+                    flowfront_highdiffs = newfilledelements{i}(results(newfilledelements{i}, i) > flowfront_threshold);
+                    highdiffs_ = [highdiffs; flowfront_highdiffs(~ismember(flowfront_highdiffs, highdiffs))];
+
+                elseif followflowfront == false
+                    % Treat all elements the same (one threshold value for
+                    % every element) -> default mode
+                    threshold = thresholdfactor * mean(nonzeros(results(filledelements{i}, i)));
+                    highdiffs = filledelements{i}(results(filledelements{i}, i) > threshold);
+                end
                 newelements = highdiffs(~ismember(highdiffs, highdiffelements));
                 timestepatregister = zeros(size(newelements)) + i;
                 newelements = [newelements, timestepatregister];
@@ -74,6 +108,37 @@ classdef meshRefiner
             normalelements = allelementids(~ismember(allelementids, highdiffelements(:, 1)));
         end
         
+        
+        function [elementvellen, elementvelangle] = calcElementVelocities(obj, elementnodeids, velx, vely, velz)
+            % Using unitvector [1, 0, 0]
+            unitvecx = 1;
+            unitvecy = 0;
+            unitvecz = 0;
+            % Length of unitvector
+            unitveclen = sqrt(unitvecx.^2 + unitvecy.^2 + unitvecz.^2);
+            
+            % Velocity components to each node of every element
+            elementvelx = obj.getElementValues(elementnodeids, velx);
+            elementvely = obj.getElementValues(elementnodeids, vely);
+            elementvelz = obj.getElementValues(elementnodeids, velz);
+            % Calculate lengths of velocity vectors at each node of every element
+            elementvellen = sqrt(elementvelx.^2 + elementvely.^2 + elementvelz.^2);
+
+            % Dotproduct of velocity vector and unitvector at each node every element
+            dotproduct = elementvelx.*unitvecx + elementvely.*unitvecy + elementvelz.*unitvecz;
+            % Product of the magnitudes of the velocity vectors and unitvectors
+            magproduct = elementvellen .* unitveclen;
+            % Cosine of the angles of the velocity vectors with the univector
+            cosangle = dotproduct ./ magproduct;
+            % Angles in radians
+            angle_rad = acos(cosangle);
+            % Angles in degrees
+            elementvelangle = rad2deg(angle_rad);
+        end
+
+
+
+
         % Function for refining the mesh in selected elements by placing multiple
         % nodes
         function [newnodepos, newelementnodeids, affectedelements] = createNewMeshMultiNode(obj, nodepos, elementnodeids, highdiffelements)
@@ -167,7 +232,7 @@ classdef meshRefiner
                 if movecentroid == true
                     newnodepos = centroid + sumvector;
                 else
-                    newnodepos = cenroid;
+                    newnodepos = centroid;
                 end
                 newnodes = [newnodes; newnodepos];
                 newnodeids = [newnodeids;[elementnodes, nodeid]];
@@ -190,11 +255,11 @@ classdef meshRefiner
         % Function for creating the entire new mesh with node positions and
         % connectivity
         function [newnodepos, newelementnodeids] = createNewMeshOneNode(obj, highdiffelements, values, elementnodeids, nodepos, movecentroid)
-            [newnodes, newnodeids] = obj.calcNewNodePos(highdiffelements, values, elementnodeids, nodepos, movecentroid);
-            newnodeconnections = obj.createNewNodeConnections(newnodeids);
+            [newnodes, newnodeids] = obj.calcNewNodePos(highdiffelements, values, elementnodeids, nodepos, movecentroid)
+            newnodeconnections = obj.createNewNodeConnections(newnodeids)
             % Creating complete new connectivity matrix
-            newelementnodeids = elementnodeids;
-            newelementnodeids(highdiffelements(:, 1), :) = [];
+            newelementnodeids = elementnodeids
+            newelementnodeids(highdiffelements(:, 1), :) = []
             newelementnodeids = [newelementnodeids; newnodeconnections];
             % Appending new node positions to old ones
             newnodepos = [nodepos; newnodes];
