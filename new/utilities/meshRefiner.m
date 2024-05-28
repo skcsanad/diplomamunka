@@ -23,8 +23,8 @@ classdef meshRefiner
                 elementdiffs = (max(elementvalues, [], 2) - min(elementvalues, [], 2)); %table2array(rowfun(@(x) max(x) - min(x), table(elementvalues)));
             elseif strcmp(mode, 'normrange')
                 elementdiffs = (max(elementvalues, [], 2) - min(elementvalues, [], 2)) ./ abs(mean(elementvalues, 2));
-            elseif strcmp(mode, 'max/min')
-                elementdiffs = (max(elementvalues, [], 2) / min(elementvalues, [], 2));
+            elseif strcmp(mode, 'relrange')
+                elementdiffs = (max(elementvalues, [], 2) - min(elementvalues, [], 2)) ./ max(elementvalues, [], 2);
             end
             elementdiffs = reshape(elementdiffs, size(elementdiffs, 1), size(elementdiffs, 3));
             elementdiffs(isnan(elementdiffs)) = 0;
@@ -136,8 +136,168 @@ classdef meshRefiner
             elementvelangle = rad2deg(angle_rad);
         end
 
-
-
+        function [highdiffs, normaldiffs, highdiffsbytimestep, ideal_threshold, slope, s, frachighdiffs, cutplace_name, fig] = calcHighDiffElementsAutoThreshold(obj, elementfillstatus, elementdiffs, followflowfront, plot_stuff, threshstep, threshmax)
+            % Setting default values
+            if nargin < 7
+                threshmax = 5;
+            end
+        
+            if nargin < 6
+                threshstep = 0.2;
+            end
+        
+            if nargin < 5
+                plot_stuff = false;
+            end
+        
+            if nargin < 4
+                followflowfront = false;
+            end
+        
+            % Creating vector with thresholdvalues
+            thresholdvalues = transpose(1:threshstep:threshmax);
+            highelementdiffs_num = zeros(length(thresholdvalues), 1);
+            highelementdiffs_rel = zeros(length(thresholdvalues), 1);
+            
+            % Calculating number of highdiffs for thresholdvalues
+            for i=1:length(thresholdvalues)
+                [highelementdiffs, normalelementdiffs] = obj.calcHighDiffElements(elementfillstatus, elementdiffs, thresholdvalues(i), followflowfront);
+                highdiffs_num = length(highelementdiffs);
+                highdiffs_rel = length(highelementdiffs) / size(elementdiffs, 1);
+                 
+                % Appending new data
+                highelementdiffs_num(i) = highdiffs_num;
+                highelementdiffs_rel(i) = highdiffs_rel;
+                
+                % Calculating cumulative sum and cumulative quadratic sum for
+                % variance calculation
+                cumsum_1 = cumsum(highelementdiffs_rel(1:i));
+                cumsum_2 = cumsum(highelementdiffs_rel(1:i).^2);
+                n = transpose(1:length(highelementdiffs_rel(1:i)));
+                cumvar = (cumsum_2 - cumsum_1.^2 ./ n) ./ (n-1);
+                cumvar(1) = 0;
+                
+                % Ending loop if zero value or declining cumulative variance is
+                % present
+                if highdiffs_rel == 0
+                    break
+                elseif thresholdvalues(i) >= 5 & max(cumvar) ~= cumvar(end)
+                    break
+                end
+            end
+            
+            % Cutting arrays at loop end
+            highelementdiffs_rel = highelementdiffs_rel(1:i);
+            highelementdiffs_num = highelementdiffs_num(1:i);
+            thresholdvalues = thresholdvalues(1:i);    
+            diffs = diff(highelementdiffs_rel);
+            [mindiff, mindiffidx] = min(diffs);
+            [maxcumvar, maxcumvaridx] = max(cumvar);
+            
+            cutplace_name = '';
+            % Selecting metric to cut the arrays further by
+            if diffs(1) - min(diffs) >= 0.3 * (max(diffs) - min(diffs))
+                cutat = mindiffidx;
+                usemindiff = true;
+                usecumvarmax = false;
+                cutplace_name = 'Derivált minimumhelye';
+            elseif maxcumvar ~= cumvar(end)
+                usemindiff = false;
+                usecumvarmax = true;
+                cutat = maxcumvaridx;
+                cutplace_name = 'Kumulált szórásnégyzet maximumhelye';
+            elseif any(highelementdiffs_rel == 0)
+                usemindiff = false;
+                usecumvarmax = false;
+                cutat = find(highdiffelements_rel == 0, 1);
+                cutplace_name = 'Első 0 érték';
+            else
+                usemindiff = false;
+                usecumvarmax = false;
+                cutat = i;
+                cutplace_name = 'Nem volt';
+            end
+            
+            % Cutting the arrays
+            highelementdiffs_rel_fit = highelementdiffs_rel(1:cutat);
+            thresholdvalues_fit = thresholdvalues(1:cutat);
+        
+            % Fitting normal distribution to the relative number of highdiffelements
+            [m, s] = normfit(highelementdiffs_rel_fit);
+            y = normpdf(0:0.01:1, m, s);
+            y_true = normpdf(highelementdiffs_rel_fit,m,s);
+            [maxval, maxindex] = max(y_true);
+            mp = highelementdiffs_rel_fit(maxindex);
+            % Fitting linear regression on the thresholdvalues and relative number
+            % of highdiffelements
+            X = [ones(length(thresholdvalues_fit), 1), thresholdvalues_fit];
+            b = X \ highelementdiffs_rel_fit;
+            slope = b(2);
+            % Calculating ideal threshold
+            ideal_threshold = (m - b(1)) / slope;
+            
+            % Highdiffelements with the ideal threshold
+            [highdiffs, normaldiffs, highdiffsbytimestep] = obj.calcHighDiffElements(elementfillstatus, elementdiffs, ideal_threshold, followflowfront);
+            numhighdiffs = length(highdiffs);
+            frachighdiffs = numhighdiffs / size(elementdiffs, 1);
+        
+            cutat_disp = thresholdvalues(cutat);
+            % Plotting if specified
+            if plot_stuff == true
+                fig = figure('Units', 'normalized', 'OuterPosition', [0.1 0.1 0.3 0.8]);
+                tiledlayout(5,1);
+                ax1 = nexttile;
+                scatter(thresholdvalues, highelementdiffs_rel, 'x');
+                xline(cutat_disp, 'r');
+                title(ax1, 'Rögzített értékek');
+                xlabel(ax1, 'Küszöbérték faktor');
+                ylabel(ax1, {'Kijelölt elemek'; 'aránya'});
+                ax2 = nexttile;
+                plot(thresholdvalues(2:end), diffs);
+                if usemindiff
+                    xline(thresholdvalues(cutat + 1), 'r');
+                end
+                title(ax2, 'Deriváltak');
+                xlabel(ax2, 'Küszöbérték faktor');
+                ylabel(ax2, {'Rögzített értékek'; 'deriváltja'});
+                ax3 = nexttile;
+                plot(thresholdvalues, cumvar);
+                if usecumvarmax
+                    xline(cutat_disp, 'r');
+                end
+                title(ax3, 'Kumulált szórásnégyzet');
+                xlabel(ax3, 'Küszöbérték faktor');
+                ylabel(ax3, {'Kumulált'; 'szórásnégyzet'});
+                ax4 = nexttile;
+                plot(0:0.01:1, y);
+                hold on;
+                scatter(highelementdiffs_rel_fit, y_true, 'x')
+                title(ax4, 'Az értékekre illesztett normál eloszlás sűrűségfüggvénye');
+                text(0.6, max(y)/2, {sprintf('µ = %f', m); sprintf('σ = ±%f', s)});
+                xline(m, 'g');
+                xline(m - s, 'y');
+                xline(m + s, 'y');
+                xlabel(ax4, 'Kijelölt elemek aránya');
+                ylabel(ax4, {'Sűrűségfüggvény'; 'értéke'});
+                ycalc = X*b;
+                hold off;
+                ax5 = nexttile;
+                plot(thresholdvalues_fit, ycalc);
+                hold on;
+                scatter(thresholdvalues_fit, highelementdiffs_rel_fit, 'x');
+                title(ax5, 'Az értékekre illesztett egyenes');
+                yline(m, 'g');
+                text(ideal_threshold+0.01*(cutat_disp-ideal_threshold), m, ...
+                    {sprintf('Meredekség: %f', slope); sprintf('Küszöbfaktor: %f', ideal_threshold)}, 'FontSize',10);
+                xline(ideal_threshold, 'g');
+                xlabel(ax5, 'Küszöbérték faktor');
+                ylabel(ax5, {'Kijelölt elemek'; 'aránya'});
+                hold off;
+            else
+                fig = 0;
+            end
+        end
+        
 
         % Function for refining the mesh in selected elements by placing multiple
         % nodes

@@ -37,7 +37,7 @@ classdef easyVisualizer
             y = elementcoordinates(:, 2);
             z = elementcoordinates(:, 3);
         
-            scatter3(x, y, z, 20, results(:, timestep), "filled", 'd')
+            scatter3(x, y, z, 20, results(:, timestep), "filled", 'd');
             colormap('jet')
             axis equal
             if strcmp(colorlimit, 'yes')
@@ -50,43 +50,58 @@ classdef easyVisualizer
         % Function for plotting the filling method while also displaying the 
         % element values for a feature in the filled region. The flowfront is
         % considered as empty so element values in the flowfront are ignored
-        function plotFillElementData(obj, elementcoordinates, elementfillstatus, results, timestep, colorlimit)
+        function plotFillElementData(obj, elementcoordinates, elementfillstatus, results, timestep, colorlimit, filled)
+            if nargin < 7
+                filled = true;
+            end
             [filledelements, emptyelements] = obj.getFilledElements(elementfillstatus);
         
             x = elementcoordinates(:, 1);
             y = elementcoordinates(:, 2);
             z = elementcoordinates(:, 3);
-        
-            scatter3(x(filledelements{timestep}), y(filledelements{timestep}), z(filledelements{timestep}), 20, results(filledelements{timestep}, timestep), "filled", 'd', 'MarkerEdgeColor', 'none')
+            
+            if filled == true
+                scatter3(x(filledelements{timestep}), y(filledelements{timestep}), z(filledelements{timestep}), 20, results(filledelements{timestep}, timestep), 'filled', 'd', 'MarkerEdgeColor', 'none');
+            else
+                scatter3(x(filledelements{timestep}), y(filledelements{timestep}), z(filledelements{timestep}), 20, results(filledelements{timestep}, timestep),'d');
+            end
             colormap('jet')
             if strcmp(colorlimit, 'yes')
                 clim([min(results(:)), max(results(:))])
             end
             colorbar
             hold on
-            scatter3(x(emptyelements{timestep}), y(emptyelements{timestep}), z(emptyelements{timestep}), 20, 'filled', 'd', 'w', 'MarkerFaceAlpha', 0.01,'MarkerEdgeAlpha', 0.01)
+            scatter3(x(emptyelements{timestep}), y(emptyelements{timestep}), z(emptyelements{timestep}), 20, 'd', 'w', 'MarkerFaceAlpha', 0.01,'MarkerEdgeAlpha', 0.01);
             axis equal
             hold off
         end
 
         % Function for plotting elements to refine and elements that remain
         % unchanged side by side
-        function plotElementsToRefine(obj, elementcoordinates, highdiffelements, normalelements, affectedelements)
+        function fig = plotElementsToRefine(obj, elementcoordinates, highdiffelements, normalelements, affectedelements)
             x = elementcoordinates(:, 1);
             y = elementcoordinates(:, 2);
             z = elementcoordinates(:, 3);
 
-            scatter3(x(highdiffelements(:, 1)), y(highdiffelements(:, 1)), z(highdiffelements(:, 1)), 100, "filled", "d", "red")
+            % if nargout == 0
+            %     fig = figure;
+            % else
+            %     fig = figure;
+            % end
+
+            fig = figure;
+
+            scatter3(x(highdiffelements(:, 1)), y(highdiffelements(:, 1)), z(highdiffelements(:, 1)), 100, 'filled', "d", "red", 'MarkerFaceAlpha', 0.8,'MarkerEdgeAlpha', 0.8);
             hold on
 
             if affectedelements ~= 0
                 affectedelements_disp = affectedelements(find(~ismember(affectedelements, highdiffelements(:, 1))));
                 unchangedelements_disp = normalelements(find(~ismember(normalelements, affectedelements)));
-                scatter3(x(affectedelements_disp), y(affectedelements_disp), z(affectedelements_disp), 100, 'filled', 'd', 'green', 'MarkerFaceAlpha', 0.5,'MarkerEdgeAlpha', 0.8)
+                scatter3(x(affectedelements_disp), y(affectedelements_disp), z(affectedelements_disp), 100, 'filled', 'd', 'green', 'MarkerFaceAlpha', 0.5,'MarkerEdgeAlpha', 0.8);
             else
                 unchangedelements_disp = normalelements;
             end
-            scatter3(x(unchangedelements_disp), y(unchangedelements_disp), z(unchangedelements_disp), 100,  "filled", "d","y", 'MarkerFaceAlpha', 0.1,'MarkerEdgeAlpha', 0.2)
+            scatter3(x(unchangedelements_disp), y(unchangedelements_disp), z(unchangedelements_disp), 100,'filled', "d","y", 'MarkerFaceAlpha', 0.1,'MarkerEdgeAlpha', 0.2);
             axis equal
             hold off
         end
@@ -103,9 +118,9 @@ classdef easyVisualizer
             y = newelementcoordinates(:, 2);
             z = newelementcoordinates(:, 3);
 
-            scatter3(x(oldelements), y(oldelements), z(oldelements), 100,  "filled", "d","y", 'MarkerFaceAlpha', 0.1,'MarkerEdgeAlpha', 0.2)
+            scatter3(x(oldelements), y(oldelements), z(oldelements), 100,  "filled", "d","y", 'MarkerFaceAlpha', 0.1,'MarkerEdgeAlpha', 0.2);
             hold on
-            scatter3(x(newelements), y(newelements), z(newelements), 100, 'filled', 'd', 'green')
+            scatter3(x(newelements), y(newelements), z(newelements), 100, 'filled', 'd', 'green');
             axis equal
             hold off
         end
