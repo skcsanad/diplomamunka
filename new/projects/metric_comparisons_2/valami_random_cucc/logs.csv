@@ -1,0 +1,13 @@
+Var1,Var2,Var3,Var4,Var5,Var6,Var7,Var8
+Nyírósebesség,Max-Min,Nem,KumulĂˇlt szĂłrĂˇsnĂ©gyzet maximumhelye,1.85,-0.36178070749417,0.203299423707473,0.153154964240896
+Nyírósebesség,(Max-Min)/Átlag,Nem,KumulĂˇlt szĂłrĂˇsnĂ©gyzet maximumhelye,1.75,-0.393320045953978,0.197182453926955,0.161159642774468
+Nyírósebesség,(Max-Min)/Max,Nem,KumulĂˇlt szĂłrĂˇsnĂ©gyzet maximumhelye,1.65,-0.512924141053824,0.226177523656345,0.149810543757691
+Hőmérséklet,Max-Min,Igen,DerivĂˇlt minimumhelye,2.9,-0.0475192545323417,0.054838979148223,0.196467950826663
+Hőmérséklet,(Max-Min)/Átlag,Igen,DerivĂˇlt minimumhelye,3,-0.0491358522478616,0.059211219941806,0.181999829428464
+Hőmérséklet,(Max-Min)/Max,Igen,DerivĂˇlt minimumhelye,2.9,-0.0475732548763457,0.0548733542027487,0.195986695420154
+Sebességvektor hossza,Max-Min,Nem,KumulĂˇlt szĂłrĂˇsnĂ©gyzet maximumhelye,1.65,-0.464850414519628,0.203273728072399,0.149603421177675
+Sebességvektor hossza,(Max-Min)/Átlag,Nem,KumulĂˇlt szĂłrĂˇsnĂ©gyzet maximumhelye,3.5,-0.0587046144782818,0.0941150325087546,0.0720664741645041
+Sebességvektor hossza,(Max-Min)/Max,Nem,DerivĂˇlt minimumhelye,1.5,-0.187966510383265,0.0690397537829392,0.276910705800651
+Sebességvektor szöge,Max-Min,Nem,KumulĂˇlt szĂłrĂˇsnĂ©gyzet maximumhelye,3.05,-0.135703007886497,0.178076731837249,0.152594514906734
+Sebességvektor szöge,(Max-Min)/Átlag,Nem,Nem volt,5.5,-0.0493620484633696,0.140604432821617,0.157534997624182
+Sebességvektor szöge,(Max-Min)/Max,Nem,Nem volt,5.5,-0.0665767672435854,0.185841447534229,0.186800199812371
