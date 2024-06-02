@@ -77,7 +77,7 @@ function metricBenchmark(orig_mesh, cutplane, savestuff, displayplots) % Modify 
     % Creating the figures of the filling process at the half of the
     % filling process
     fillfiglist = {};
-    timestep = round(size(elementfillstatus, 2) / 2);
+    timestep = size(elementfillstatus, 2) - 1;
 
     fillfig_1 = easyvisualizer.plotFillElementData(elementcoordinates, elementfillstatus, sheardiffs_r, timestep, "no", true, cutplane, displayplots);
     fillfiglist{1} = fillfig_1;

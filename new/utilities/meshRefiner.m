@@ -136,14 +136,18 @@ classdef meshRefiner
             elementvelangle = rad2deg(angle_rad);
         end
 
-        function [highdiffs, normaldiffs, highdiffsbytimestep, ideal_threshold, slope, s, frachighdiffs, cutplace_name, fig] = calcHighDiffElementsAutoThreshold(obj, elementfillstatus, elementdiffs, followflowfront, plot_stuff, threshstep, threshmax)
+        function [highdiffs, normaldiffs, highdiffsbytimestep, ideal_threshold, slope, s, frachighdiffs, cutplace_name, fig] = calcHighDiffElementsAutoThreshold(obj, elementfillstatus, elementdiffs, followflowfront, plot_stuff, displayfig, threshstep, threshmax)
             % Setting default values
-            if nargin < 7
+            if nargin < 8
                 threshmax = 5;
             end
         
-            if nargin < 6
+            if nargin < 7
                 threshstep = 0.2;
+            end
+
+            if nargin < 6
+                displayfig = false;
             end
         
             if nargin < 5
@@ -200,22 +204,22 @@ classdef meshRefiner
                 cutat = mindiffidx;
                 usemindiff = true;
                 usecumvarmax = false;
-                cutplace_name = 'Derivált minimumhelye';
+                cutplace_name = 'deriv min';
             elseif maxcumvar ~= cumvar(end)
                 usemindiff = false;
                 usecumvarmax = true;
                 cutat = maxcumvaridx;
-                cutplace_name = 'Kumulált szórásnégyzet maximumhelye';
+                cutplace_name = 'cumvar max';
             elseif any(highelementdiffs_rel == 0)
                 usemindiff = false;
                 usecumvarmax = false;
                 cutat = find(highdiffelements_rel == 0, 1);
-                cutplace_name = 'Első 0 érték';
+                cutplace_name = 'first 0';
             else
                 usemindiff = false;
                 usecumvarmax = false;
                 cutat = i;
-                cutplace_name = 'Nem volt';
+                cutplace_name = 'no cut';
             end
             
             % Cutting the arrays
@@ -244,7 +248,11 @@ classdef meshRefiner
             cutat_disp = thresholdvalues(cutat);
             % Plotting if specified
             if plot_stuff == true
-                fig = figure('Units', 'normalized', 'OuterPosition', [0.1 0.1 0.3 0.8]);
+                if displayfig == true
+                    fig = figure('Units', 'normalized', 'OuterPosition', [0.1 0.1 0.3 0.8]);
+                else
+                    fig = figure('Units', 'normalized', 'OuterPosition', [0.1 0.1 0.3 0.8], 'Visible', 'off');
+                end
                 tiledlayout(5,1);
                 ax1 = nexttile;
                 scatter(thresholdvalues, highelementdiffs_rel, 'x');
