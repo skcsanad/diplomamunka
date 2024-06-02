@@ -213,7 +213,7 @@ classdef meshRefiner
             elseif any(highelementdiffs_rel == 0)
                 usemindiff = false;
                 usecumvarmax = false;
-                cutat = find(highdiffelements_rel == 0, 1);
+                cutat = find(highelementdiffs_rel == 0, 1);
                 cutplace_name = 'first 0';
             else
                 usemindiff = false;
