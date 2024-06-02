@@ -6,12 +6,15 @@ function metricBenchmark(orig_mesh, cutplane, savestuff, displayplots) % Modify 
     shearrates = load(fullfile('input', orig_mesh, 'Shearrate.mat')).SRnode;
     shearrates(shearrates(:, :) == -1e+30) = 0;
     temps = load(fullfile('input', orig_mesh, 'Tnode.mat')).Tnode;
+    temps(temps(:, :) == -1e+30) = 0;
     fillstatus = load(fullfile('input', orig_mesh, 'Fillstatus.mat')).Fillstatus;
     connectednodes = load(fullfile('input', orig_mesh, 'connectedNodes.mat')).connectedNodes;
     connectedelements = load(fullfile('input', orig_mesh, 'connectedElements.mat')).connectedElements;
     velx = load(fullfile('input', orig_mesh, 'VelX.mat')).VelX;
     vely = load(fullfile('input', orig_mesh, 'VelY.mat')).VelY;
     velz = load(fullfile('input', orig_mesh, 'VelZ.mat')).VelZ;
+    viscs = load(fullfile('input', orig_mesh, 'Visc.mat')).Visc;
+    viscs(viscs(:, :) == -1e+30) = 0;
     
     meshrefiner = meshRefiner;
     easyvisualizer = easyVisualizer;
@@ -19,7 +22,7 @@ function metricBenchmark(orig_mesh, cutplane, savestuff, displayplots) % Modify 
     
     % Creating directory for the files to save
     logs_dir_name = fullfile('output', orig_mesh);
-    child_dir_names = {'shear', 'temp', 'vellen', 'angle'};
+    child_dir_names = {'shear', 'temp', 'vellen', 'angle', 'visc'};
     
     if ~exist(logs_dir_name, 'dir')
         mkdir(logs_dir_name);
@@ -42,9 +45,10 @@ function metricBenchmark(orig_mesh, cutplane, savestuff, displayplots) % Modify 
     elementshearrates = meshrefiner.getElementValues(elementnodeids, shearrates);
     elementtemps = meshrefiner.getElementValues(elementnodeids, temps);
     [elementvellen, angle_deg] = meshrefiner.calcElementVelocities(elementnodeids, velx, vely, velz);
+    elementviscs = meshrefiner.getElementValues(elementnodeids, viscs);
 
     % Calculating all the metrics for all the value types
-    data = cell(1,12);
+    data = cell(1,15);
     
     sheardiffs_r = meshrefiner.calcElementDiffs(elementshearrates, 'range');
     data{1} = sheardiffs_r;
@@ -73,6 +77,13 @@ function metricBenchmark(orig_mesh, cutplane, savestuff, displayplots) % Modify 
     data{11} = anglediffs_n;
     anglediffs_rr = meshrefiner.calcElementDiffs(angle_deg, 'relrange');
     data{12} = anglediffs_rr;
+
+    viscdiffs_r = meshrefiner.calcElementDiffs(elementviscs, 'range');
+    data{13} = viscdiffs_r;
+    viscdiffs_n = meshrefiner.calcElementDiffs(elementviscs, 'normrange');
+    data{14} = viscdiffs_n;
+    viscdiffs_rr = meshrefiner.calcElementDiffs(elementviscs, 'relrange');
+    data{15} = viscdiffs_rr;
 
     % Creating the figures of the filling process at the half of the
     % filling process
@@ -106,6 +117,13 @@ function metricBenchmark(orig_mesh, cutplane, savestuff, displayplots) % Modify 
     fillfiglist{11} = fillfig_11;
     fillfig_12 = easyvisualizer.plotFillElementData(elementcoordinates, elementfillstatus, anglediffs_rr, timestep, "no", true, cutplane, displayplots);
     fillfiglist{12} = fillfig_12;
+
+    fillfig_13 = easyvisualizer.plotFillElementData(elementcoordinates, elementfillstatus, viscdiffs_r, timestep, "no", true, cutplane, displayplots);
+    fillfiglist{13} = fillfig_13;
+    fillfig_14 = easyvisualizer.plotFillElementData(elementcoordinates, elementfillstatus, viscdiffs_n, timestep, "no", true, cutplane, displayplots);
+    fillfiglist{14} = fillfig_14;
+    fillfig_15 = easyvisualizer.plotFillElementData(elementcoordinates, elementfillstatus, viscdiffs_rr, timestep, "no", true, cutplane, displayplots);
+    fillfiglist{15} = fillfig_15;
     
     % Running the autothresholding on every metric
     Value = {};
@@ -253,7 +271,40 @@ function metricBenchmark(orig_mesh, cutplane, savestuff, displayplots) % Modify 
     Sigma(12) = s_angle_rr;
     Frac(12) = frac_angle_rr;
     figlist{12} = fig_angle_rr;
-    
+
+    [highviscdiffs_r, normalviscdiffs_r, highviscdiffsbytimestep_r, ideal_threshold_visc_r, slope_visc_r, s_visc_r, frac_visc_r, ctpn_visc_r, fig_visc_r] = meshrefiner.calcHighDiffElementsAutoThreshold(elementfillstatus, viscdiffs_r, true, true, displayplots, 0.1, 10);
+    Value{13} = 'viscosity';
+    Metric{13} = 'max-min';
+    Followflowfront{13} = 'yes';
+    Cutplacename{13} = ctpn_visc_r;
+    Idthresh(13) = ideal_threshold_visc_r;
+    Slope(13) = slope_visc_r;
+    Sigma(13) = s_visc_r;
+    Frac(13) = frac_visc_r;
+    figlist{13} = fig_visc_r;
+
+    [highviscdiffs_n, normalviscdiffs_n, highviscdiffsbytimestep_n, ideal_threshold_visc_n, slope_visc_n, s_visc_n, frac_visc_n, ctpn_visc_n, fig_visc_n] = meshrefiner.calcHighDiffElementsAutoThreshold(elementfillstatus, viscdiffs_n, true, true, displayplots, 0.1, 10);
+    Value{14} = 'viscosity';
+    Metric{14} = '(max-min)/mean';
+    Followflowfront{14} = 'yes';
+    Cutplacename{14} = ctpn_visc_n;
+    Idthresh(14) = ideal_threshold_visc_n;
+    Slope(14) = slope_visc_n;
+    Sigma(14) = s_visc_n;
+    Frac(14) = frac_visc_n;
+    figlist{14} = fig_visc_n;
+
+    [highviscdiffs_rr, normalviscdiffs_rr, highviscdiffsbytimestep_rr, ideal_threshold_visc_rr, slope_visc_rr, s_visc_rr, frac_visc_rr, ctpn_visc_rr, fig_visc_rr] = meshrefiner.calcHighDiffElementsAutoThreshold(elementfillstatus, viscdiffs_rr, true, true, displayplots, 0.1, 10);
+    Value{15} = 'viscosity';
+    Metric{15} = '(max-min)/max';
+    Followflowfront{15} = 'yes';
+    Cutplacename{15} = ctpn_visc_rr;
+    Idthresh(15) = ideal_threshold_visc_rr;
+    Slope(15) = slope_visc_rr;
+    Sigma(15) = s_visc_rr;
+    Frac(15) = frac_visc_rr;
+    figlist{15} = fig_visc_rr;
+
     logdata = table(Value', Metric', Followflowfront', Cutplacename', Idthresh', Slope', Sigma', Frac');
 
     % Plotting elements to refine
@@ -287,11 +338,18 @@ function metricBenchmark(orig_mesh, cutplane, savestuff, displayplots) % Modify 
     elemfig_angle_rr = easyvisualizer.plotElementsToRefine(elementcoordinates, highanglediffs_rr, normalanglediffs_rr, 0, cutplane, displayplots);
     elemfiglist{12} = elemfig_angle_rr;
 
+    elemfig_visc_r = easyvisualizer.plotElementsToRefine(elementcoordinates, highviscdiffs_r, normalviscdiffs_r, 0, cutplane, displayplots);
+    elemfiglist{13} = elemfig_visc_r;
+    elemfig_visc_n = easyvisualizer.plotElementsToRefine(elementcoordinates, highviscdiffs_n, normalviscdiffs_n, 0, cutplane, displayplots);
+    elemfiglist{14} = elemfig_visc_n;
+    elemfig_visc_rr = easyvisualizer.plotElementsToRefine(elementcoordinates, highviscdiffs_rr, normalviscdiffs_rr, 0, cutplane, displayplots);
+    elemfiglist{15} = elemfig_visc_rr;
+
     % Saving figures and logs
-    directory = {'shear', 'shear', 'shear', 'temp', 'temp', 'temp', 'vellen', 'vellen', 'vellen', 'angle', 'angle', 'angle'};
-    fignames = {'shear_r.png', 'shear_n.png', 'shear_rr.png' 'temp_r.png', 'temp_n.png', 'temp_rr.png', 'vellen_r.png', 'vellen_n.png', 'vellen_rr.png', 'angle_r.png', 'angle_n.png', 'angle_rr.png'};
-    elemfignames = {'elem_shear_r.png', 'elem_shear_n.png', 'elem_shear_rr.png', 'elem_temp_r.png', 'elem_temp_n.png', 'elem_temp_rr.png', 'elem_vellen_r.png', 'elem_vellen_n.png', 'elem_vellen_rr.png', 'elem_angle_r.png', 'elem_angle_n.png', 'elem_angle_rr.png'};
-    fillfignames = {'fill_shear_r.png', 'fill_shear_n.png', 'fill_shear_rr.png', 'fill_temp_r.png', 'fill_temp_n.png', 'fill_temp_rr.png', 'fill_vellen_r.png', 'fill_vellen_n.png', 'fill_vellen_rr.png', 'fill_angle_r.png', 'fill_angle_n.png', 'fill_angle_rr.png'};
+    directory = {'shear', 'shear', 'shear', 'temp', 'temp', 'temp', 'vellen', 'vellen', 'vellen', 'angle', 'angle', 'angle', 'visc', 'visc', 'visc'};
+    fignames = {'shear_r.png', 'shear_n.png', 'shear_rr.png' 'temp_r.png', 'temp_n.png', 'temp_rr.png', 'vellen_r.png', 'vellen_n.png', 'vellen_rr.png', 'angle_r.png', 'angle_n.png', 'angle_rr.png', 'visc_r.png', 'visc_n.png', 'visc_rr.png'};
+    elemfignames = {'elem_shear_r.png', 'elem_shear_n.png', 'elem_shear_rr.png', 'elem_temp_r.png', 'elem_temp_n.png', 'elem_temp_rr.png', 'elem_vellen_r.png', 'elem_vellen_n.png', 'elem_vellen_rr.png', 'elem_angle_r.png', 'elem_angle_n.png', 'elem_angle_rr.png', 'elem_visc_r.png', 'elem_visc_n.png', 'elem_visc_rr.png'};
+    fillfignames = {'fill_shear_r.png', 'fill_shear_n.png', 'fill_shear_rr.png', 'fill_temp_r.png', 'fill_temp_n.png', 'fill_temp_rr.png', 'fill_vellen_r.png', 'fill_vellen_n.png', 'fill_vellen_rr.png', 'fill_angle_r.png', 'fill_angle_n.png', 'fill_angle_rr.png', 'fill_visc_r.png', 'fill_visc_n.png', 'fill_visc_rr.png'};
     
     if savestuff
         for i=1:length(figlist)
