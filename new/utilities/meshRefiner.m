@@ -387,17 +387,17 @@ classdef meshRefiner
                 nodeid = nodeid + 1;
                 elementnodes = elementnodeids(highdiffelements(i, 1), :);
                 elementnodecoords = nodepos(elementnodes, :);
-                elementvalues = values(highdiffelements(i, 2), elementnodes(:));
-                edges = nchoosek(1:length(elementvalues), 2);
-                edges_t = transpose(edges);
-                pair_values = elementvalues(edges);
-                relativeedgediffs = abs(diff(pair_values, 1, 2)) / sum(abs(diff(pair_values, 1, 2)));   
-                edgecoords = elementnodecoords(edges_t(:, :), :);
-                edgecenters = transpose([mean(reshape(edgecoords(:, 1), 2, []), 1); mean(reshape(edgecoords(:, 2), 2, []), 1); mean(reshape(edgecoords(:, 3), 2, []), 1)]);
                 centroid = [mean(elementnodecoords(:, 1)), mean(elementnodecoords(:, 2)), mean(elementnodecoords(:, 3))];
-                vectors = edgecenters - centroid;
-                sumvector = 0.8 * (sum(vectors .* relativeedgediffs, 1));
                 if movecentroid == true
+                    elementvalues = values(highdiffelements(i, 2), elementnodes(:));
+                    edges = nchoosek(1:length(elementvalues), 2);
+                    edges_t = transpose(edges);
+                    pair_values = elementvalues(edges);
+                    relativeedgediffs = abs(diff(pair_values, 1, 2)) / sum(abs(diff(pair_values, 1, 2)));   
+                    edgecoords = elementnodecoords(edges_t(:, :), :);
+                    edgecenters = transpose([mean(reshape(edgecoords(:, 1), 2, []), 1); mean(reshape(edgecoords(:, 2), 2, []), 1); mean(reshape(edgecoords(:, 3), 2, []), 1)]);
+                    vectors = edgecenters - centroid;
+                    sumvector = 0.8 * (sum(vectors .* relativeedgediffs, 1));
                     newnodepos = centroid + sumvector;
                 else
                     newnodepos = centroid;
@@ -423,11 +423,11 @@ classdef meshRefiner
         % Function for creating the entire new mesh with node positions and
         % connectivity
         function [newnodepos, newelementnodeids] = createNewMeshOneNode(obj, highdiffelements, values, elementnodeids, nodepos, movecentroid)
-            [newnodes, newnodeids] = obj.calcNewNodePos(highdiffelements, values, elementnodeids, nodepos, movecentroid)
-            newnodeconnections = obj.createNewNodeConnections(newnodeids)
+            [newnodes, newnodeids] = obj.calcNewNodePos(highdiffelements, values, elementnodeids, nodepos, movecentroid);
+            newnodeconnections = obj.createNewNodeConnections(newnodeids);
             % Creating complete new connectivity matrix
-            newelementnodeids = elementnodeids
-            newelementnodeids(highdiffelements(:, 1), :) = []
+            newelementnodeids = elementnodeids;
+            newelementnodeids(highdiffelements(:, 1), :) = [];
             newelementnodeids = [newelementnodeids; newnodeconnections];
             % Appending new node positions to old ones
             newnodepos = [nodepos; newnodes];

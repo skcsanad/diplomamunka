@@ -87,11 +87,11 @@ classdef easyVisualizer
             % Apply cross-section filter if specified
             if ~isempty(crossSection)
                 if displayfig == true
-                    fig = figure('Units', 'normalized', 'OuterPosition', [0.1 0.1 0.3 0.8]);
+                    fig = figure();
                 else
-                    fig = figure('Units', 'normalized', 'OuterPosition', [0.1 0.1 0.3 0.8], 'Visible', 'off');
+                    fig = figure('Visible', 'off');
                 end
-                tiledlayout(2, 1);
+                tiledlayout(1, 2, 'TileSpacing', 'compact', 'Padding', 'none');
                 switch crossSection
                     case 'XY'
                         filterIdx = z <= crossSectionValue;
@@ -125,7 +125,7 @@ classdef easyVisualizer
             if strcmp(colorlimit, 'yes')
                 clim([min(results(:)), max(results(:))])
             end
-            colorbar
+            %colorbar
             hold on
             scatter3(x(emptyelements{timestep}), y(emptyelements{timestep}), z(emptyelements{timestep}), 20, 'd', 'w', 'MarkerFaceAlpha', 0.01,'MarkerEdgeAlpha', 0.01);
             axis equal
@@ -142,10 +142,12 @@ classdef easyVisualizer
                 if strcmp(colorlimit, 'yes')
                     clim([min(results(:)), max(results(:))])
                 end
-                colorbar
+                %colorbar
                 axis equal
                 hold off
             end
+            cb = colorbar('Location', 'southoutside');
+            cb.Layout.Tile = 'south'; % Set the colorbar to span the bottom of the layout    
         end
 
         % Function for plotting elements to refine and elements that remain
@@ -234,6 +236,9 @@ classdef easyVisualizer
                 nexttile;
                 scatter3(x(highdiffelements_cs(:, 1)), y(highdiffelements_cs(:, 1)), z(highdiffelements_cs(:, 1)), 100, 'filled', "d", "red");
                 hold on
+                if affectedelements ~= 0
+                    scatter3(x(affectedelements_disp_cs), y(affectedelements_disp_cs), z(affectedelements_disp_cs), 100, 'filled', 'd', 'green', 'MarkerFaceAlpha', 0.5,'MarkerEdgeAlpha', 0.8);
+                end
                 scatter3(x(unchangedelements_disp_cs), y(unchangedelements_disp_cs), z(unchangedelements_disp_cs), 100,'filled', "d","y", 'MarkerFaceAlpha', 0.15,'MarkerEdgeAlpha', 0.2);
                 axis equal
                 hold off
